@@ -4,8 +4,7 @@ defmodule FrameTest do
 
   test "decode text" do
     txt = "  \n*rga#1UQ8p+bart@1UQ8yk+lisa:0!\n    @(s+bart'H'@[r'e'@(t'l'@[T'l'@[i'o'\n    @(w+lisa' '@(x'w'@(y'o'@[1'r'@{a'l'@[2'd'@[k'!'"
-    frame = Frame.from_text!(txt)
-    assert frame == :ok
+    Frame.from_text(txt) |> Frame.ops |> IO.inspect
   end
 
   test "ron-tests 01-lww-basic" do
@@ -41,7 +40,6 @@ defmodule FrameTest do
 
 *lww#raw@1:one=1;@2:two^2.0:three'три'
 "
-    frame = Frame.from_text!(txt)
-    assert frame == :ok
+    Frame.from_text(txt) |> Frame.ops |> Enum.to_list |> IO.inspect
   end
 end

@@ -30,13 +30,6 @@ defmodule UUID do
     from_text(str, prev_column, prev_row, init)
   end
 
-  def from_text!(str, prev_column, prev_row) do
-    case from_text(str, prev_column, prev_row) do
-      {:ok, ret} -> ret
-      {:error, msg} -> raise msg
-    end
-  end
-
   defp from_text(str, prev_column, prev_row, {hi, hi_bits, lo, lo_bits, sch}) do
     use Bitwise
 
