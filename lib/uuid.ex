@@ -18,11 +18,11 @@ defmodule UUID do
   end
 
   def error() do
-    %UUID{ hi: UUID.encode_b64('~~~~~~~~~~'), lo: 0, scheme: :name }
+    %UUID{ hi: 1152921504606846975, lo: 0, scheme: :name }
   end
 
   def never() do
-    %UUID{ hi: UUID.encode_b64('~'), lo: 0, scheme: :event }
+    %UUID{ hi: 1134907106097364992, lo: 0, scheme: :event }
   end
 
   def from_text(str, prev_column, prev_row) do
