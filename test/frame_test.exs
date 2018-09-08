@@ -41,5 +41,6 @@ defmodule FrameTest do
 *lww#raw@1:one=1;@2:two^2.0:three'три'
 "
     Frame.from_text(txt) |> Frame.ops |> Enum.to_list |> IO.inspect
+    Frame.from_text(txt) |> Frame.chunks |> Enum.to_list |> IO.inspect
   end
 end
