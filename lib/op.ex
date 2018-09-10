@@ -1,7 +1,8 @@
 defmodule Op do
   defstruct type: :nil, object: :nil, event: UUID.now(), location: :nil, atoms: [], term: :raw
 
-  def from_text(str, %Op{ type: prev_ty, object: prev_obj, event: prev_ev, location: prev_loc}) do
+  def parse(str, %Op{ type: prev_ty, object: prev_obj, event: prev_ev, location: prev_loc}) do
+
     str = String.trim_leading(str)
     prefixes = ["#", "@", ":", "'", "!", "^", "=", ">", ",", ";", "?"]
 
@@ -38,8 +39,7 @@ defmodule Op do
                       ";" <> _ -> {:ok, {[], str}}
                       "!" <> _ -> {:ok, {[], str}}
                       "?" <> _ -> {:ok, {[], str}}
-                      "" -> {:ok, {[], str}}
-                      _ -> {:error ,"cannot decode atoms"}
+                      _ -> {:ok, {[], str}}
                     end
 
                     case atoms_res do
@@ -51,9 +51,7 @@ defmodule Op do
                           ";" <> cdr -> {:raw, cdr}
                           "!" <> cdr -> {:header, cdr}
                           "?" <> cdr -> {:query, cdr}
-                          "." <> cdr -> {:end, cdr}
-                          "," <> cdr -> {:end, cdr}
-                          "" -> {:end, str}
+                          "," <> cdr -> {:reduced, cdr}
                           _ -> {:reduced, str}
                         end
 
@@ -62,7 +60,7 @@ defmodule Op do
                           location: my_loc, atoms: my_atoms,
                           term: my_term
                         }
-                        {:ok, {op, str}}
+                        {:ok, {op, String.trim_leading(str)}}
 
                       err -> err
                     end
@@ -85,7 +83,7 @@ defmodule Op do
   end
 
   defp atoms(txt, prev_uuid), do: atoms(txt, prev_uuid, [])
-  defp atoms("", _, prev), do: {prev, ""}
+  defp atoms("", _, prev), do: {:ok, {prev, ""}}
   defp atoms(txt, prev_uuid, prev) do
     txt = String.trim_leading(txt)
     if txt == "" do
@@ -96,7 +94,7 @@ defmodule Op do
 
       case car do
         ?> ->
-          case UUID.from_text(String.trim_leading(cdr), prev_uuid, :nil) do
+          case UUID.parse(String.trim_leading(cdr), prev_uuid, :nil) do
             {:ok, {uu, cdr}} ->
               atoms(cdr, prev_uuid, [uu | prev])
             {:error, msg} -> {:error, msg}
@@ -120,15 +118,16 @@ defmodule Op do
   end
 
   defp spec_uuid(str, spec, default, row_prev, skip) do
+    str = String.trim_leading(str)
     cond do
-      String.first(str) == spec ->
-        UUID.from_text(String.slice(str, 1..-1), default, row_prev)
-      Enum.member?(skip, String.first(str)) ->
-        {:ok, {default, str}}
       str == "" ->
         {:ok, {default, str}}
+      String.first(str) == spec ->
+        UUID.parse(String.slice(str, 1..-1), default, row_prev)
+      Enum.member?(skip, String.first(str)) ->
+        {:ok, {default, str}}
       true ->
-        {:error, "cannot decode type"}
+        {:error, "cannot decode spec uuid. Got " <> str}
     end
   end
 
@@ -155,3 +154,25 @@ defmodule Op do
     end
   end
 end
+
+defimpl String.Chars, for: Op do
+  def to_string(%Op{ type: ty, event: ev, object: obj, location: loc, term: term, atoms: atoms }) do
+    "*" <> Kernel.to_string(ty)
+      <> "#" <> Kernel.to_string(obj)
+      <> "@" <> Kernel.to_string(ev)
+      <> ":" <> Kernel.to_string(loc)
+      <> Enum.reduce(atoms, "", fn
+        i, acc when is_integer(i) -> acc <> "=" <> Kernel.to_string(i)
+        f, acc when is_float(f) -> acc <> "^" <> Kernel.to_string(f)
+        u = %UUID{}, acc -> acc <> "=" <> Kernel.to_string(u)
+        s, acc -> acc <> "'" <> s <> "'"
+      end)
+      <> case term do
+        :raw -> ";"
+        :reduced -> ","
+        :header -> "!"
+        :query -> "?"
+      end
+  end
+end
+
