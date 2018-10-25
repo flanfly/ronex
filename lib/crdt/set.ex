@@ -1,26 +1,24 @@
 defmodule Set do
-  def reduce([]), do: []
-  def reduce(frame) do
-    [head | _] = frame
-    latest = Enum.at(frame, -1).event
+  def reduce(_, []), do: []
+  def reduce(state, update) do
+    [head | _] = state
+    %Op{ event: latest } = Enum.at(update, -1)
     spec = %Op{ head | event: latest, location: UUID.zero(), term: :header }
+    body = Enum.filter(state ++ update, fn %Op{ term: term } ->
+      term != :header and term != :query
+    end)
+    |> Enum.sort(fn a,b ->
+      au = if UUID.is_zero?(a.location) do a.event else a.location end
+      bu = if UUID.is_zero?(b.location) do b.event else b.location end
 
-    [spec |
-      frame
-      |> Enum.filter(fn %Op{ term: term } ->
-        term != :header and term != :query
-      end)
-      |> Enum.sort(fn a,b ->
-        au = if UUID.is_zero?(a.location) do a.event else a.location end
-        bu = if UUID.is_zero?(b.location) do b.event else b.location end
-
-        if au == bu do UUID.is_less?(b.location, a.location)
-        else UUID.is_less?(bu, au) end
-      end)
-      |> Enum.chunk_by(fn %Op{ location: loc, event: ev } ->
-        if UUID.is_zero?(loc) do ev else loc end end)
+      if au == bu do UUID.is_less?(b.location, a.location)
+      else UUID.is_less?(bu, au) end
+    end)
+    |> Enum.chunk_by(fn %Op{ location: loc, event: ev } ->
+      if UUID.is_zero?(loc) do ev else loc end end)
       |> Enum.map(fn [op | _] -> op end)
-    ]
+
+    [spec | body]
   end
 
   def map([]), do: MapSet.new()
