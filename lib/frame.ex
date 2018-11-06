@@ -1,15 +1,16 @@
 defmodule Frame do
   defstruct type: :nil, data: :nil
 
-  def parse(str), do: parse(str, [])
-  defp parse("", ops), do: {:ok, ops, ""}
-  defp parse("." <> cdr, ops), do: {:ok, ops, cdr}
-  defp parse("\t" <> cdr, ops), do: parse(cdr, ops)
-  defp parse("\n" <> cdr, ops), do: parse(cdr, ops)
-  defp parse("\r" <> cdr, ops), do: parse(cdr, ops)
-  defp parse("\v" <> cdr, ops), do: parse(cdr, ops)
-  defp parse(" " <> cdr, ops), do: parse(cdr, ops)
-  defp parse(str, ops) do
+  # Parse until EOF
+  def parse(str), do: parse_impl(str, [])
+  defp parse_impl("", ops), do: {:ok, ops}
+  defp parse_impl("." <> _, ops), do: {:ok, ops}
+  defp parse_impl("\t" <> cdr, ops), do: parse_impl(cdr, ops)
+  defp parse_impl("\n" <> cdr, ops), do: parse_impl(cdr, ops)
+  defp parse_impl("\r" <> cdr, ops), do: parse_impl(cdr, ops)
+  defp parse_impl("\v" <> cdr, ops), do: parse_impl(cdr, ops)
+  defp parse_impl(" " <> cdr, ops), do: parse_impl(cdr, ops)
+  defp parse_impl(str, ops) do
     prev = case ops do
       [] ->
         %Op{
@@ -22,47 +23,19 @@ defmodule Frame do
     case Op.parse(str, prev) do
       {:ok, {op, cdr}} ->
         if ops == [] do
-          parse(cdr, [op])
+          parse_impl(cdr, [op])
         else
-          prev = List.last(ops)
-          %Op{ term: prev_term } = prev
-          %Op{ term: term } = op
+          #prev = List.last(ops)
+          #%Op{ term: prev_term } = prev
+          #%Op{ term: term } = op
 
-          if prev_term == :raw or term != :reduced do
-            {:ok, ops, str}
-          else
-            parse(cdr, ops ++ [op])
-          end
+          #if prev_term == :raw or term != :reduced do
+          #  {:ok, ops, str}
+          #else
+          parse_impl(cdr, ops ++ [op])
+          #end
         end
 
-      err = {:error, _} -> err
-    end
-  end
-
-  def parse!(str) do
-    case parse(str) do
-      {:ok, ops, cdr} -> {ops, cdr}
-      {:error, msg} -> raise msg
-    end
-  end
-end
-
-defimpl String.Chars, for: Frame do
-  def to_string(frame) do
-    Enum.reduce(Frame.ops!(frame), "", fn
-      op, "" -> Kernel.to_string(op)
-      op, acc -> acc <> " " <> Kernel.to_string(op)
-    end)
-  end
-end
-
-defmodule Batch do
-  def parse(str), do: parse(str, [])
-  defp parse(str, batch) do
-    case Frame.parse(str) do
-      {:ok, [], cdr} -> {:ok, batch}
-      {:ok, ops, ""} -> {:ok, batch ++ [ops]}
-      {:ok, ops, cdr} -> parse(cdr, batch ++ [ops])
       err = {:error, _} -> err
     end
   end
@@ -72,5 +45,29 @@ defmodule Batch do
       {:ok, ops} -> ops
       {:error, msg} -> raise msg
     end
+  end
+
+  def split(frame) do
+    Enum.chunk_while(frame, [],fn
+      elem,[] -> {:cont, [elem]}
+      elem = %Op{ term: :header },chunk -> {:cont, chunk, [elem]}
+      elem = %Op{ term: :query },chunk -> {:cont, chunk, [elem]}
+      elem = %Op{ term: :raw },chunk -> {:cont, chunk, [elem]}
+      elem = %Op{ term: :reduced },chunk = [%Op{ term: :header } | _] ->
+        {:cont, chunk ++ [elem]}
+      elem = %Op{ term: :reduced },chunk -> {:cont, chunk, [elem]}
+    end, fn
+      [] -> {:cont, []}
+      chunk -> {:cont, chunk, []}
+    end)
+  end
+end
+
+defimpl String.Chars, for: Frame do
+  def to_string(frame) do
+    Enum.reduce(frame, "", fn
+      op, "" -> Kernel.to_string(op)
+      op, acc -> acc <> " " <> Kernel.to_string(op)
+    end)
   end
 end

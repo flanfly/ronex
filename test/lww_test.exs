@@ -40,11 +40,11 @@ defmodule LWWTest do
   end
 
   defp test_lww(state, updates, output) do
-    {state, _} = Frame.parse!(state)
-    updates = Batch.parse!(updates)
-    {output, _} = Frame.parse!(output)
+    state = Frame.parse!(state)
+    updates = Frame.parse!(updates)
+    output = Frame.parse!(output)
 
-    final = Enum.reduce(updates, state, fn update, state -> LWW.reduce(state, update) end)
+    final = LWW.reduce(state, updates)
     final = LWW.map(final)
     expected = LWW.map(output)
 

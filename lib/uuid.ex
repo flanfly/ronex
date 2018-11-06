@@ -6,13 +6,13 @@ defmodule UUID do
   def now_from(origin), do: %UUID{ hi: 0, lo: origin, scheme: :event }
 
   def name(name) do
-    %UUID{ hi: UUID.decode_b64(name), lo: 0, scheme: :name }
+    %UUID{ hi: UUID.parse(name), lo: 0, scheme: :name }
   end
 
   def scoped_name(name, scope) do
     %UUID{
-      hi: UUID.decode_b64(name),
-      lo: UUID.decode_b64(scope),
+      hi: UUID.parse(name),
+      lo: UUID.parse(scope),
       scheme: :name
     }
   end
@@ -42,7 +42,7 @@ defmodule UUID do
     {:ok, {prev_column, ""}}
   end
 
-  defp parse("", prev_column, _, {hi, _, lo, _, sch}) do
+  defp parse("", _, _, {hi, _, lo, _, sch}) do
     {:ok, {%UUID{ hi: hi, lo: lo, scheme: sch}, ""}}
   end
 

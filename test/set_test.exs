@@ -72,11 +72,11 @@ defmodule SetTest do
   end
 
   defp test_set(state, updates, output) do
-    {state, _} = Frame.parse!(state)
-    updates = Batch.parse!(updates)
-    {output, _} = Frame.parse!(output)
+    state = Frame.parse!(state)
+    updates = Frame.parse!(updates)
+    output = Frame.parse!(output)
 
-    final = Enum.reduce(updates, state, fn update, state -> Set.reduce(state, update) end)
+    final = Set.reduce(state, updates)
     final = Set.map(final)
     expected = Set.map(output)
 
